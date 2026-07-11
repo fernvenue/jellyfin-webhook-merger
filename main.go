@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,7 +13,11 @@ import (
 	"sync"
 	"text/template"
 	"time"
+
+	flag "github.com/spf13/pflag"
 )
+
+var version = "dev"
 
 type WebhookRequest struct {
 	SeriesId      string `json:"SeriesId"`
@@ -53,9 +56,11 @@ type Config struct {
 }
 
 var (
-	config Config
-	queue  = make(map[QueueKey]QueueValue)
-	mu     sync.Mutex
+	config      Config
+	queue       = make(map[QueueKey]QueueValue)
+	mu          sync.Mutex
+	showVersion bool
+	showHelp    bool
 )
 
 func envStr(key, defaultVal string) string {
@@ -75,17 +80,29 @@ func envInt(key string, defaultVal int) int {
 }
 
 func main() {
-	flag.StringVar(&config.ListenAddress, "listen-address", envStr("LISTEN_ADDRESS", "::1"), "")
-	flag.IntVar(&config.ListenPort, "listen-port", envInt("LISTEN_PORT", 8520), "")
-	flag.IntVar(&config.WaitSecond, "wait-second", envInt("WAIT_SECOND", 300), "")
-	flag.IntVar(&config.RetryCount, "retry-count", envInt("RETRY_COUNT", 3), "")
-	flag.StringVar(&config.TextKey, "text-key", envStr("TEXT_KEY", "text"), "")
-	flag.StringVar(&config.TextContent, "text-content", envStr("TEXT_CONTENT", "📺 <b>Episode update reminder:</b> <b>{{.SeriesName}}</b> <b>Season {{.SeasonNumber}}</b>\n"), "")
-	flag.StringVar(&config.EpisodeFormat, "episode-format", envStr("EPISODE_FORMAT", "\nEpisode {{.EpisodeNumber}} {{.EpisodeName}}"), "")
-	flag.StringVar(&config.TargetURL, "target-url", envStr("TARGET_URL", ""), "")
-	flag.StringVar(&config.AdditionalParams, "additional-params", envStr("ADDITIONAL_PARAMS", "{}"), "")
-	flag.StringVar(&config.ContentHeader, "content-header", envStr("CONTENT_HEADER", "text"), "")
+	flag.StringVarP(&config.ListenAddress, "listen-address", "a", envStr("LISTEN_ADDRESS", "::1"), "Bind address.")
+	flag.IntVarP(&config.ListenPort, "listen-port", "p", envInt("LISTEN_PORT", 8520), "Bind port.")
+	flag.IntVarP(&config.WaitSecond, "wait-second", "w", envInt("WAIT_SECOND", 300), "Wait time in seconds before merging the notifications.")
+	flag.IntVarP(&config.RetryCount, "retry-count", "r", envInt("RETRY_COUNT", 3), "Number of times to retry sending the notification if the target URL does not return a 2xx response.")
+	flag.StringVarP(&config.TextKey, "text-key", "k", envStr("TEXT_KEY", "text"), "Key used for the notification text in the JSON payload.")
+	flag.StringVarP(&config.TextContent, "text-content", "t", envStr("TEXT_CONTENT", "📺 <b>Episode update reminder:</b> <b>{{.SeriesName}}</b> <b>Season {{.SeasonNumber}}</b>\n"), "Template for the notification text.")
+	flag.StringVarP(&config.EpisodeFormat, "episode-format", "e", envStr("EPISODE_FORMAT", "\nEpisode {{.EpisodeNumber}} {{.EpisodeName}}"), "Format for each episode's notification line.")
+	flag.StringVarP(&config.TargetURL, "target-url", "u", envStr("TARGET_URL", ""), "Target URL to send the notification to.")
+	flag.StringVarP(&config.AdditionalParams, "additional-params", "d", envStr("ADDITIONAL_PARAMS", "{}"), "Additional parameters in JSON format, supports variables like '{{.SeriesId}}'.")
+	flag.StringVarP(&config.ContentHeader, "content-header", "c", envStr("CONTENT_HEADER", "text"), "Content type hint used when building the outgoing request.")
+	flag.BoolVarP(&showVersion, "version", "v", false, "Print version and exit.")
+	flag.BoolVarP(&showHelp, "help", "h", false, "Print help and exit.")
 	flag.Parse()
+
+	if showHelp {
+		flag.Usage()
+		os.Exit(0)
+	}
+
+	if showVersion {
+		fmt.Println(version)
+		return
+	}
 
 	if config.TargetURL == "" {
 		log.Fatal("Error: target-url is required")
