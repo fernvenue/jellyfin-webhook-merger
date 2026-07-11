@@ -90,13 +90,16 @@ Then you will receive a notification with a jump button!
 
 ## Configuration Options
 
-| Parameter            | Description                                                                 | Default Value                                               |
-|----------------------|-----------------------------------------------------------------------------|-------------------------------------------------------------|
-| `--wait-second`       | The wait time in seconds before merging the notifications.                   | 300                                                         |
-| `--text-content`      | The template for the notification text. You can use variables like `{{.SeriesName}}`, `{{.SeasonNumber}}`, and `{{.EpisodeName}}`. | `📺 <b>Episode update reminder:</b> <b>{{.SeriesName}}</b> <b>Season {{.SeasonNumber}}</b>\n` |
-| `--text-key`          | The key used for the notification text in the JSON payload, allowing flexibility in JSON structure. | `text`                                                      |
-| `--episode-format`    | The format for each episode's notification. You can use variables like `{{.EpisodeNumber}}` and `{{.EpisodeName}}`. | `\nEpisode {{.EpisodeNumber}}`                               |
-| `--target-url`        | The target URL to send the notification to.                                  | `""` (Must be specified)                                    |
-| `--additional-params` | Additional parameters in JSON format. Supports variables like `{{.SeriesId}}`. Example: `{"chat_id": "******", "photo": "https://example.com/{{.SeriesId}}"}`. | `{}` (Valid JSON format)                                    |
-| `--listen-address`    | The address to listen on. Defaults to `::1`.                                | `::1`                                                       |
-| `--listen-port`       | The port to listen on. Defaults to `8520`.                                  | 8520                                                        |
+Every parameter can also be set through an environment variable, which is useful when running in a container. Command-line flags take precedence over environment variables.
+
+| Parameter            | Environment Variable | Description                                                                 | Default Value                                               |
+|----------------------|-----------------------|-----------------------------------------------------------------------------|-------------------------------------------------------------|
+| `--wait-second`       | `WAIT_SECOND`         | The wait time in seconds before merging the notifications.                   | 300                                                         |
+| `--retry-count`       | `RETRY_COUNT`         | The number of times to retry sending the notification if the target URL does not return a 2xx response, waiting `--wait-second` seconds between attempts. | 3                                                           |
+| `--text-content`      | `TEXT_CONTENT`        | The template for the notification text. You can use variables like `{{.SeriesName}}`, `{{.SeasonNumber}}`, and `{{.EpisodeName}}`. | `📺 <b>Episode update reminder:</b> <b>{{.SeriesName}}</b> <b>Season {{.SeasonNumber}}</b>\n` |
+| `--text-key`          | `TEXT_KEY`             | The key used for the notification text in the JSON payload, allowing flexibility in JSON structure. | `text`                                                      |
+| `--episode-format`    | `EPISODE_FORMAT`       | The format for each episode's notification. You can use variables like `{{.EpisodeNumber}}` and `{{.EpisodeName}}`. | `\nEpisode {{.EpisodeNumber}}`                               |
+| `--target-url`        | `TARGET_URL`           | The target URL to send the notification to.                                  | `""` (Must be specified)                                    |
+| `--additional-params` | `ADDITIONAL_PARAMS`    | Additional parameters in JSON format. Supports variables like `{{.SeriesId}}`. Example: `{"chat_id": "******", "photo": "https://example.com/{{.SeriesId}}"}`. | `{}` (Valid JSON format)                                    |
+| `--listen-address`    | `LISTEN_ADDRESS`       | The address to listen on. Defaults to `::1`.                                | `::1`                                                       |
+| `--listen-port`       | `LISTEN_PORT`          | The port to listen on. Defaults to `8520`.                                  | 8520                                                        |

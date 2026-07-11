@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"text/template"
@@ -41,6 +43,7 @@ type Config struct {
 	ListenAddress    string
 	ListenPort       int
 	WaitSecond       int
+	RetryCount       int
 	TextContent      string
 	TextKey          string
 	EpisodeFormat    string
@@ -55,16 +58,33 @@ var (
 	mu     sync.Mutex
 )
 
+func envStr(key, defaultVal string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return defaultVal
+}
+
+func envInt(key string, defaultVal int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
+	}
+	return defaultVal
+}
+
 func main() {
-	flag.StringVar(&config.ListenAddress, "listen-address", "::1", "")
-	flag.IntVar(&config.ListenPort, "listen-port", 8520, "")
-	flag.IntVar(&config.WaitSecond, "wait-second", 300, "")
-	flag.StringVar(&config.TextKey, "text-key", "text", "")
-	flag.StringVar(&config.TextContent, "text-content", "📺 <b>Episode update reminder:</b> <b>{{.SeriesName}}</b> <b>Season {{.SeasonNumber}}</b>\n", "")
-	flag.StringVar(&config.EpisodeFormat, "episode-format", "\nEpisode {{.EpisodeNumber}} {{.EpisodeName}}", "")
-	flag.StringVar(&config.TargetURL, "target-url", "", "")
-	flag.StringVar(&config.AdditionalParams, "additional-params", "{}", "")
-	flag.StringVar(&config.ContentHeader, "content-header", "text", "")
+	flag.StringVar(&config.ListenAddress, "listen-address", envStr("LISTEN_ADDRESS", "::1"), "")
+	flag.IntVar(&config.ListenPort, "listen-port", envInt("LISTEN_PORT", 8520), "")
+	flag.IntVar(&config.WaitSecond, "wait-second", envInt("WAIT_SECOND", 300), "")
+	flag.IntVar(&config.RetryCount, "retry-count", envInt("RETRY_COUNT", 3), "")
+	flag.StringVar(&config.TextKey, "text-key", envStr("TEXT_KEY", "text"), "")
+	flag.StringVar(&config.TextContent, "text-content", envStr("TEXT_CONTENT", "📺 <b>Episode update reminder:</b> <b>{{.SeriesName}}</b> <b>Season {{.SeasonNumber}}</b>\n"), "")
+	flag.StringVar(&config.EpisodeFormat, "episode-format", envStr("EPISODE_FORMAT", "\nEpisode {{.EpisodeNumber}} {{.EpisodeName}}"), "")
+	flag.StringVar(&config.TargetURL, "target-url", envStr("TARGET_URL", ""), "")
+	flag.StringVar(&config.AdditionalParams, "additional-params", envStr("ADDITIONAL_PARAMS", "{}"), "")
+	flag.StringVar(&config.ContentHeader, "content-header", envStr("CONTENT_HEADER", "text"), "")
 	flag.Parse()
 
 	if config.TargetURL == "" {
@@ -166,21 +186,42 @@ func processQueue(key QueueKey) {
 
 	body, _ := json.Marshal(params)
 
-	log.Printf("Sending request to target URL: %s", config.TargetURL)
-	log.Printf("Request body: %s", string(body))
+	var sendErr error
+	for attempt := 0; attempt <= config.RetryCount; attempt++ {
+		if attempt > 0 {
+			log.Printf("Retry attempt %d/%d, waiting %d seconds", attempt, config.RetryCount, config.WaitSecond)
+			time.Sleep(time.Duration(config.WaitSecond) * time.Second)
+		}
 
-	resp, err := http.Post(config.TargetURL, "application/json", bytes.NewReader(body))
-	if err != nil {
-		log.Printf("Error sending request to target URL: %v", err)
-		return
+		log.Printf("Sending request to target URL: %s", config.TargetURL)
+		log.Printf("Request body: %s", string(body))
+
+		resp, err := http.Post(config.TargetURL, "application/json", bytes.NewReader(body))
+		if err != nil {
+			log.Printf("Error sending request to target URL (attempt %d): %v", attempt+1, err)
+			sendErr = err
+			continue
+		}
+
+		respBody := new(bytes.Buffer)
+		respBody.ReadFrom(resp.Body)
+		resp.Body.Close()
+
+		log.Printf("Response status: %s", resp.Status)
+		log.Printf("Response body: %s", respBody.String())
+
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			sendErr = nil
+			break
+		}
+
+		sendErr = fmt.Errorf("target returned status: %s", resp.Status)
+		log.Printf("Non-2xx response (attempt %d): %s", attempt+1, resp.Status)
 	}
-	defer resp.Body.Close()
 
-	respBody := new(bytes.Buffer)
-	respBody.ReadFrom(resp.Body)
-
-	log.Printf("Response status: %s", resp.Status)
-	log.Printf("Response body: %s", respBody.String())
+	if sendErr != nil {
+		log.Printf("All %d retry attempts failed: %v", config.RetryCount, sendErr)
+	}
 }
 
 func buildText(seriesName string, seasonNumber int, episodes []Episode) (string, error) {
