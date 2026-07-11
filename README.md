@@ -1,8 +1,4 @@
-# Jellyfin Webhook Plugin Episodes Merger
-
-[![jellyfin-plugin-webhook-episodes-merger](https://img.shields.io/badge/LICENSE-AGPLv3%20Liscense-blue?style=flat-square)](./LICENSE)
-[![jellyfin-plugin-webhook-episodes-merger](https://img.shields.io/badge/GitHub-Jellyfin%20Webhook%20Plugin%20Episodes%20Merger-blueviolet?style=flat-square&logo=github)](https://github.com/fernvenue/jellyfin-plugin-webhook-episodes-merger)
-[![jellyfin-plugin-webhook-episodes-merger](https://img.shields.io/badge/GitLab-Jellyfin%20Webhook%20Plugin%20Episodes%20Merger-orange?style=flat-square&logo=gitlab)](https://gitlab.com/fernvenue/jellyfin-plugin-webhook-episodes-merger)
+# Jellyfin Webhook Merger
 
 Merge the webhooks of Episodes based on queue, work with [jellyfin/jellyfin-plugin-webhook](https://github.com/jellyfin/jellyfin-plugin-webhook).
 
@@ -13,7 +9,7 @@ This tool is a middleware that listens to a TCP port and receives requests from 
 Here is an example of pushing to Telegram. Download directly from Releases or build it yourself, and then run:
 
 ```
-./jellyfin-plugin-webhook-episodes-merger --target-url "https://api.telegram.org/bot******/sendMessage" --additional-params '{"chat_id": "******","parse_mode": "html"}'
+./jellyfin-webhook-merger --target-url "https://api.telegram.org/bot******/sendMessage" --additional-params '{"chat_id": "******","parse_mode": "html"}'
 ```
 
 In the Webhook configuration page of Jellyfin, select **Add Generic Destination**, then you only need to check **Item Added** and tick **Episodes** in **Item Type**, and the **Template** must be:
@@ -28,7 +24,7 @@ In the Webhook configuration page of Jellyfin, select **Add Generic Destination*
 }
 ```
 
-And Webhook URL should be the address and port that `jellyfin-plugin-webhook-episodes-merger` listen to, by deafult it will be `http://[::1]:8520`.
+And Webhook URL should be the address and port that `jellyfin-webhook-merger` listen to, by deafult it will be `http://[::1]:8520`.
 
 Then you will receive a notification, like this:
 
@@ -77,7 +73,7 @@ Here we need to go to Jellyfin first, change the **Template** in **Item Type** l
 And we should run with:
 
 ```
-./jellyfin-plugin-webhook-episodes-merger --target-url "https://api.telegram.org/bot******/sendPhoto" --text-key "caption" --additional-params "{\"chat_id\": \"******\", \"photo\": \"https://***/Items/{{.SeriesId}}/Images/Primary\", \"parse_mode\": \"html\"}"
+./jellyfin-webhook-merger --target-url "https://api.telegram.org/bot******/sendPhoto" --text-key "caption" --additional-params "{\"chat_id\": \"******\", \"photo\": \"https://***/Items/{{.SeriesId}}/Images/Primary\", \"parse_mode\": \"html\"}"
 ```
 
 Other parameters remain unchanged, and then you will receive notifications with Series images.
@@ -87,7 +83,7 @@ Other parameters remain unchanged, and then you will receive notifications with 
 As with the previous part, we only need to make a small modification:
 
 ```
-./jellyfin-plugin-webhook-episodes-merger --target-url "https://api.telegram.org/bot******/sendPhoto" --text-key "caption" --additional-params "{\"reply_markup\": {\"inline_keyboard\": [[{\"text\": \"Go Check it Out!\", \"url\": \"https://******/web/#/details?id={{.SeriesId}}&serverId=******\"}]]}, \"chat_id\": \"******\", \"photo\": \"https://***/Items/{{.SeriesId}}/Images/Primary\", \"parse_mode\": \"html\"}"
+./jellyfin-webhook-merger --target-url "https://api.telegram.org/bot******/sendPhoto" --text-key "caption" --additional-params "{\"reply_markup\": {\"inline_keyboard\": [[{\"text\": \"Go Check it Out!\", \"url\": \"https://******/web/#/details?id={{.SeriesId}}&serverId=******\"}]]}, \"chat_id\": \"******\", \"photo\": \"https://***/Items/{{.SeriesId}}/Images/Primary\", \"parse_mode\": \"html\"}"
 ```
 
 Then you will receive a notification with a jump button!
